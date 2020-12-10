@@ -4,10 +4,9 @@
 
 ### 📥 下载链接
 | 📦 项目 | 📃 文件 | 🐙 GitHub RAW | 🔧 适用范围
-|  :--:  |  :--:  |     :--:     |     :--:    | ---- |
+|  :--:  |  :--:  |     :--:     | ---- |
 | IP-CIDR 列表 | chnroutes.txt | [点我下载](https://github.com/mac-zhou/GeoIP2-CN-misakaio/raw/release/chnroutes.txt) | 防火墙、较老的代理工具等 | 
 | GeoIP2 数据库 | Country.mmdb | [点我下载](https://github.com/mac-zhou/GeoIP2-CN-misakaio/raw/release/Country.mmdb) | Surge, Shadowrocket,<br>QuantumultX, Clash<br>等较新的代理工具|
-
 
 ### 🙋🏻‍♂️ 使用方式
 #### Surge 
