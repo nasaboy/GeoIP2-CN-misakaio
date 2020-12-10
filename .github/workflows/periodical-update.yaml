@@ -47,29 +47,32 @@ jobs:
         cd dist
         ./ipip2mmdb -s ./chnroutes.txt -d Country.mmdb
         cd $CURRENT_DIR
-
-    - name: Save artifacts
-      run: |
-        if [ ! -d artifacts ]; then
-          mkdir -p artifacts
-        fi
-
-        cp -rf dist/chnroutes.txt artifacts/
-        cp -rf dist/Country.mmdb artifacts/
     
-    - name: Commit Changes
+    - name: Push artifacts to release branch
       run: |
-        if [ -z "$(git status --porcelain)" ]; then 
-          exit 0
-        else 
-          git add artifacts
-          git config --local user.name "github-action[bot]"
-          git config --local user.email "${{ github.actor }}@users.noreply.github.com"
-          git commit -m "Update GeoIP at $(date)" -a
-        fi
+        git config --local user.email "${{ github.actor }}@users.noreply.github.com"
+        git config --local user.name "github-action[bot]"
+
+        git fetch
+        git checkout release
+
+        git checkout --orphan release-orphan
+        git rm -rf .
+
+        cp -rf dist/chnroutes.txt ./
+        cp -rf dist/Country.mmdb ./
+
+        git add Country.mmdb
+        git add chnroutes.txt
+        git commit -am "Updated at $(date)"
+
+        git branch -D release
+        git branch -m release
             
     - name: GitHub Push
-      uses: ad-m/github-push-action@v0.5.0
+      uses: ad-m/github-push-action@v0.6.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: release
+        force: true
 
