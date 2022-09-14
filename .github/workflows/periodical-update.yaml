@@ -37,9 +37,13 @@ jobs:
     - name: Compile GeoIP conversion bin (Golang)
       run: ./build.sh
 
-    - name: Obtain CN IP lists
+    - name: Obtain CN IPv4 lists
       run: |
         wget -qO- "https://raw.githubusercontent.com/misakaio/chnroutes2/master/chnroutes.txt" | grep -v '#' > dist/chnroutes.txt
+    
+    - name: Obtain CN IPv6 lists
+      run: |
+        wget -qO- "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china6.txt" | grep -v '#' >> dist/chnroutes.txt
 
     - name: Generate GeoIP2 database
       run: |
