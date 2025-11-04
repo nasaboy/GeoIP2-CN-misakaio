@@ -39,7 +39,7 @@ jobs:
 
     - name: Obtain CN IPv4 lists
       run: |
-        wget -qO- "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt" | grep -v '#' > dist/chnroutes.txt
+        wget -qO- "https://raw.githubusercontent.com/misakaio/chnroutes2/master/chnroutes.txt" | grep -v '#' > dist/chnroutes.txt
     
     - name: Obtain CN IPv6 lists
       run: |
