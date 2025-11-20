@@ -9,41 +9,37 @@ import (
 	"os"
 )
 
-// 移除所有注释掉的字段
-// "continent": mmdbtype.Map{...}
-// "registered_country": mmdbtype.Map{...}
-// "traits": mmdbtype.Map{...}
-
 var (
-	srcFile string
-	dstFile string
+	srcFile      string
+	dstFile      string
 	databaseType string
-	// **修改 cnRecord**：
+	description  string
 	// 仅保留 country -> iso_code: "CN"
 	cnRecord = mmdbtype.Map{
 		"country": mmdbtype.Map{
-			"iso_code":             mmdbtype.String("CN"),
+			"iso_code": mmdbtype.String("CN"),
 		},
 	}
 )
 
-func init()  {
+func init() {
 	flag.StringVar(&srcFile, "s", "ipip_cn.txt", "specify source ip list file")
 	flag.StringVar(&dstFile, "d", "Country.mmdb", "specify destination mmdb file")
-	flag.StringVar(&databaseType,"t", "GeoLite2-Country", "specify MaxMind database type")
+	flag.StringVar(&databaseType, "t", "GeoLite2-Country", "specify MaxMind database type")
+	flag.StringVar(&description, "description", "Customized GeoLite2 Country database", "specify a description for mmdb metadata")
 	flag.Parse()
 }
 
-// 注意：你的代码中缺少 parseCIDRs 函数的定义，
-// 如果在同一目录下有其他文件定义了它，请确保它在编译时可用。
-// 否则，你需要在这里或另一个文件中定义它，例如：
-// func parseCIDRs(ipTxtList []string) []net.IPNet { ... }
+// parseCIDRs 定义见 ip2cidr.go
 
-func main()  {
+func main() {
 	writer, err := mmdbwriter.New(
 		mmdbwriter.Options{
 			DatabaseType: databaseType,
 			RecordSize:   24,
+			Description: map[string]string{
+				"en": description,
+			},
 		},
 	)
 	if err != nil {
@@ -62,8 +58,7 @@ func main()  {
 		ipTxtList = append(ipTxtList, scanner.Text())
 	}
 
-	// 假设 parseCIDRs 函数已定义并能将字符串列表转换为 *net.IPNet 列表
-	ipList := parseCIDRs(ipTxtList) 
+	ipList := parseCIDRs(ipTxtList)
 	for _, ip := range ipList {
 		err = writer.Insert(ip, cnRecord)
 		if err != nil {
@@ -80,5 +75,4 @@ func main()  {
 	if err != nil {
 		log.Fatalf("fail to write to file %v\n", err)
 	}
-
 }
