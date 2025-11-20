@@ -8,74 +8,21 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 )
-		//"country": mmdbtype.Map{
-		//"continent": mmdbtype.Map{
-		//"code": mmdbtype.String("AS"),
-		//"geoname_id": mmdbtype.Uint32(6255147),
-		//"names":mmdbtype.Map{"de":mmdbtype.String("Asien"),
-		//"en":mmdbtype.String("Asia"),
-		//"es":mmdbtype.String("Asia"),
-		//"fr":mmdbtype.String("Asie"),
-		//"ja":mmdbtype.String("アジア"),
-		//"pt-BR":mmdbtype.String("Ásia"),
-		//"ru":mmdbtype.String("Азия"),
-		//"zh-CN":mmdbtype.String("亚洲")},
-		//},
-		//"country": mmdbtype.Map{
-		//"geoname_id":mmdbtype.Uint32(1814991),
-		//"is_in_european_union":mmdbtype.Bool(false),
-		//"iso_code":mmdbtype.String("CN"),
-		//"names":mmdbtype.Map{
-		//"de":mmdbtype.String("China"),
-		//"en":mmdbtype.String("China"),
-		//"es":mmdbtype.String("China"),
-		//"fr":mmdbtype.String("Chine"),
-		//"ja":mmdbtype.String("中国"),
-		//"pt-BR":mmdbtype.String("China"),
-		//"ru":mmdbtype.String("Китай"),
-		//"zh-CN":mmdbtype.String("中国"),
-		//},
-		//},
-		//"registered_country": mmdbtype.Map{
-		//"geoname_id":mmdbtype.Uint32(1814991),
-		//"is_in_european_union":mmdbtype.Bool(false),
-		//"iso_code":mmdbtype.String("CN"),
-		//"names":mmdbtype.Map{
-		//"de":mmdbtype.String("China"),
-		//"en":mmdbtype.String("China"),
-		//"es":mmdbtype.String("China"),
-		//"fr":mmdbtype.String("Chine"),
-		//"ja":mmdbtype.String("中国"),
-		//"pt-BR":mmdbtype.String("China"),
-		//"ru":mmdbtype.String("Китай"),
-		//"zh-CN":mmdbtype.String("中国"),
-		//},
-		//},
-		//"traits": mmdbtype.Map{
-		//"is_anonymous_proxy": mmdbtype.Bool(false),
-		//"is_satellite_provider":mmdbtype.Bool(false),
-		//},
-		//},
+
+// 移除所有注释掉的字段
+// "continent": mmdbtype.Map{...}
+// "registered_country": mmdbtype.Map{...}
+// "traits": mmdbtype.Map{...}
 
 var (
 	srcFile string
 	dstFile string
 	databaseType string
+	// **修改 cnRecord**：
+	// 仅保留 country -> iso_code: "CN"
 	cnRecord = mmdbtype.Map{
 		"country": mmdbtype.Map{
-			"geoname_id":           mmdbtype.Uint32(1814991),
-			"is_in_european_union": mmdbtype.Bool(false),
 			"iso_code":             mmdbtype.String("CN"),
-			"names": mmdbtype.Map{
-				"de":    mmdbtype.String("China"),
-				"en":    mmdbtype.String("China"),
-				"es":    mmdbtype.String("China"),
-				"fr":    mmdbtype.String("Chine"),
-				"ja":    mmdbtype.String("中国"),
-				"pt-BR": mmdbtype.String("China"),
-				"ru":    mmdbtype.String("Китай"),
-				"zh-CN": mmdbtype.String("中国"),
-			},
 		},
 	}
 )
@@ -86,6 +33,11 @@ func init()  {
 	flag.StringVar(&databaseType,"t", "GeoIP2-Country", "specify MaxMind database type")
 	flag.Parse()
 }
+
+// 注意：你的代码中缺少 parseCIDRs 函数的定义，
+// 如果在同一目录下有其他文件定义了它，请确保它在编译时可用。
+// 否则，你需要在这里或另一个文件中定义它，例如：
+// func parseCIDRs(ipTxtList []string) []net.IPNet { ... }
 
 func main()  {
 	writer, err := mmdbwriter.New(
@@ -110,7 +62,8 @@ func main()  {
 		ipTxtList = append(ipTxtList, scanner.Text())
 	}
 
-	ipList := parseCIDRs(ipTxtList)
+	// 假设 parseCIDRs 函数已定义并能将字符串列表转换为 *net.IPNet 列表
+	ipList := parseCIDRs(ipTxtList) 
 	for _, ip := range ipList {
 		err = writer.Insert(ip, cnRecord)
 		if err != nil {
@@ -129,5 +82,3 @@ func main()  {
 	}
 
 }
-
-
