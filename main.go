@@ -6,6 +6,7 @@ import (
 	"github.com/maxmind/mmdbwriter"
 	"github.com/maxmind/mmdbwriter/mmdbtype"
 	log "github.com/sirupsen/logrus"
+	"net" // ⭐️ 新增：用于 IP/CIDR 解析
 	"os"
 )
 		//"country": mmdbtype.Map{
@@ -61,7 +62,7 @@ var (
 	srcFile string
 	dstFile string
 	databaseType string
-	// ⭐️ 修改点 1: 精简 cnRecord，只保留 iso_code
+	// 已修改：只保留 iso_code
 	cnRecord = mmdbtype.Map{
 		"country": mmdbtype.Map{
 			"iso_code":             mmdbtype.String("CN"),
@@ -76,6 +77,40 @@ func init()  {
 	flag.Parse()
 }
 
+// ⭐️ 新增：parseCIDRs 函数的实现，解决编译错误
+func parseCIDRs(ipTxtList []string) []*net.IPNet {
+	var ipList []*net.IPNet
+	for _, ipTxt := range ipTxtList {
+		if ipTxt == "" {
+			continue // 跳过空行
+		}
+		// 尝试解析为 CIDR (如 1.1.1.0/24)
+		_, ipNet, err := net.ParseCIDR(ipTxt)
+		if err == nil {
+			ipList = append(ipList, ipNet)
+			continue
+		}
+
+		// 如果解析 CIDR 失败，尝试解析为单个 IP (如 8.8.8.8)
+		ip := net.ParseIP(ipTxt)
+		if ip != nil {
+			// 对于单个 IP，我们创建一个 /32 (IPv4) 或 /128 (IPv6) 的 IPNet
+			var mask net.IPMask
+			if ip.To4() != nil {
+				mask = net.CIDRMask(32, 32)
+			} else {
+				mask = net.CIDRMask(128, 128)
+			}
+			ipNet = &net.IPNet{IP: ip, Mask: mask}
+			ipList = append(ipList, ipNet)
+			continue
+		}
+		
+		log.Warnf("Skipping invalid IP or CIDR: %s", ipTxt)
+	}
+	return ipList
+}
+
 func main()  {
 	writer, err := mmdbwriter.New(
 		mmdbwriter.Options{
@@ -87,7 +122,7 @@ func main()  {
 		log.Fatalf("fail to new writer %v\n", err)
 	}
 
-	// ⭐️ 修改点 2: 增加 Description 和 Languages
+	// 已新增：设置 Description 和 Languages
 	writer.Metadata.Description = map[string]string{
 		"en":    "IP-to-Country Database (CN only)",
 		"zh-CN": "IP到国家/地区数据库 (仅中国)",
@@ -102,4 +137,30 @@ func main()  {
 	scanner := bufio.NewScanner(fh)
 	scanner.Split(bufio.ScanLines)
 
-	for scanner.Scan
+	for scanner.Scan() {
+		ipTxtList = append(ipTxtList, scanner.Text())
+	}
+
+	ipList := parseCIDRs(ipTxtList)
+	for _, ip := range ipList {
+		err = writer.Insert(ip, cnRecord)
+		if err != nil {
+			log.Fatalf("fail to insert to writer %v\n", err)
+		}
+	}
+
+	outFh, err := os.Create(dstFile)
+	if err != nil {
+		log.Fatalf("fail to create output file %v\n", err)
+	}
+
+	_, err = writer.WriteTo(outFh)
+	if err != nil {
+		log.Fatalf("fail to write to file %v\n", err)
+	}
+
+}
+
+
+
+}
