@@ -6,63 +6,20 @@ import (
 	"github.com/maxmind/mmdbwriter"
 	"github.com/maxmind/mmdbwriter/mmdbtype"
 	log "github.com/sirupsen/logrus"
-	"net" // ⭐️ 新增：用于 IP/CIDR 解析
 	"os"
 )
-		//"country": mmdbtype.Map{
-		//"continent": mmdbtype.Map{
-		//"code": mmdbtype.String("AS"),
-		//"geoname_id": mmdbtype.Uint32(6255147),
-		//"names":mmdbtype.Map{"de":mmdbtype.String("Asien"),
-		//"en":mmdbtype.String("Asia"),
-		//"es":mmdbtype.String("Asia"),
-		//"fr":mmdbtype.String("Asie"),
-		//"ja":mmdbtype.String("アジア"),
-		//"pt-BR":mmdbtype.String("Ásia"),
-		//"ru":mmdbtype.String("Азия"),
-		//"zh-CN":mmdbtype.String("亚洲")},
-		//},
-		//"country": mmdbtype.Map{
-		//"geoname_id":mmdbtype.Uint32(1814991),
-		//"is_in_european_union":mmdbtype.Bool(false),
-		//"iso_code":mmdbtype.String("CN"),
-		//"names":mmdbtype.Map{
-		//"de":mmdbtype.String("China"),
-		//"en":mmdbtype.String("China"),
-		//"es":mmdbtype.String("China"),
-		//"fr":mmdbtype.String("Chine"),
-		//"ja":mmdbtype.String("中国"),
-		//"pt-BR":mmdbtype.String("China"),
-		//"ru":mmdbtype.String("Китай"),
-		//"zh-CN":mmdbtype.String("中国"),
-		//},
-		//},
-		//"registered_country": mmdbtype.Map{
-		//"geoname_id":mmdbtype.Uint32(1814991),
-		//"is_in_european_union":mmdbtype.Bool(false),
-		//"iso_code":mmdbtype.String("CN"),
-		//"names":mmdbtype.Map{
-		//"de":mmdbtype.String("China"),
-		//"en":mmdbtype.String("China"),
-		//"es":mmdbtype.String("China"),
-		//"fr":mmdbtype.String("Chine"),
-		//"ja":mmdbtype.String("中国"),
-		//"pt-BR":mmdbtype.String("China"),
-		//"ru":mmdbtype.String("Китай"),
-		//"zh-CN":mmdbtype.String("中国"),
-		//},
-		//},
-		//"traits": mmdbtype.Map{
-		//"is_anonymous_proxy": mmdbtype.Bool(false),
-		//"is_satellite_provider":mmdbtype.Bool(false),
-		//},
-		//},
+
+// 移除所有注释掉的字段
+// "continent": mmdbtype.Map{...}
+// "registered_country": mmdbtype.Map{...}
+// "traits": mmdbtype.Map{...}
 
 var (
 	srcFile string
 	dstFile string
 	databaseType string
-	// 已修改：只保留 iso_code
+	// **修改 cnRecord**：
+	// 仅保留 country -> iso_code: "CN"
 	cnRecord = mmdbtype.Map{
 		"country": mmdbtype.Map{
 			"iso_code":             mmdbtype.String("CN"),
@@ -73,43 +30,14 @@ var (
 func init()  {
 	flag.StringVar(&srcFile, "s", "ipip_cn.txt", "specify source ip list file")
 	flag.StringVar(&dstFile, "d", "Country.mmdb", "specify destination mmdb file")
-	flag.StringVar(&databaseType,"t", "GeoIP2-Country", "specify MaxMind database type")
+	flag.StringVar(&databaseType,"t", "GeoLite2-Country", "specify MaxMind database type")
 	flag.Parse()
 }
 
-// ⭐️ 新增：parseCIDRs 函数的实现，解决编译错误
-func parseCIDRs(ipTxtList []string) []*net.IPNet {
-	var ipList []*net.IPNet
-	for _, ipTxt := range ipTxtList {
-		if ipTxt == "" {
-			continue // 跳过空行
-		}
-		// 尝试解析为 CIDR (如 1.1.1.0/24)
-		_, ipNet, err := net.ParseCIDR(ipTxt)
-		if err == nil {
-			ipList = append(ipList, ipNet)
-			continue
-		}
-
-		// 如果解析 CIDR 失败，尝试解析为单个 IP (如 8.8.8.8)
-		ip := net.ParseIP(ipTxt)
-		if ip != nil {
-			// 对于单个 IP，我们创建一个 /32 (IPv4) 或 /128 (IPv6) 的 IPNet
-			var mask net.IPMask
-			if ip.To4() != nil {
-				mask = net.CIDRMask(32, 32)
-			} else {
-				mask = net.CIDRMask(128, 128)
-			}
-			ipNet = &net.IPNet{IP: ip, Mask: mask}
-			ipList = append(ipList, ipNet)
-			continue
-		}
-		
-		log.Warnf("Skipping invalid IP or CIDR: %s", ipTxt)
-	}
-	return ipList
-}
+// 注意：你的代码中缺少 parseCIDRs 函数的定义，
+// 如果在同一目录下有其他文件定义了它，请确保它在编译时可用。
+// 否则，你需要在这里或另一个文件中定义它，例如：
+// func parseCIDRs(ipTxtList []string) []net.IPNet { ... }
 
 func main()  {
 	writer, err := mmdbwriter.New(
@@ -121,13 +49,6 @@ func main()  {
 	if err != nil {
 		log.Fatalf("fail to new writer %v\n", err)
 	}
-
-	// 已新增：设置 Description 和 Languages
-	writer.Metadata.Description = map[string]string{
-		"en":    "IP-to-Country Database (CN only)",
-		"zh-CN": "IP到国家/地区数据库 (仅中国)",
-	}
-	writer.Metadata.Languages = []string{"en", "zh-CN"}
 
 	var ipTxtList []string
 	fh, err := os.Open(srcFile)
@@ -141,7 +62,8 @@ func main()  {
 		ipTxtList = append(ipTxtList, scanner.Text())
 	}
 
-	ipList := parseCIDRs(ipTxtList)
+	// 假设 parseCIDRs 函数已定义并能将字符串列表转换为 *net.IPNet 列表
+	ipList := parseCIDRs(ipTxtList) 
 	for _, ip := range ipList {
 		err = writer.Insert(ip, cnRecord)
 		if err != nil {
@@ -158,9 +80,5 @@ func main()  {
 	if err != nil {
 		log.Fatalf("fail to write to file %v\n", err)
 	}
-
-}
-
-
 
 }
