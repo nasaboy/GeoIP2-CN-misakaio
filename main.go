@@ -6,18 +6,76 @@ import (
 	"github.com/maxmind/mmdbwriter"
 	"github.com/maxmind/mmdbwriter/mmdbtype"
 	log "github.com/sirupsen/logrus"
-	"net" // <-- 新增：处理 IP 地址和 CIDR 所需
 	"os"
 )
+		//"country": mmdbtype.Map{
+		//"continent": mmdbtype.Map{
+		//"code": mmdbtype.String("AS"),
+		//"geoname_id": mmdbtype.Uint32(6255147),
+		//"names":mmdbtype.Map{"de":mmdbtype.String("Asien"),
+		//"en":mmdbtype.String("Asia"),
+		//"es":mmdbtype.String("Asia"),
+		//"fr":mmdbtype.String("Asie"),
+		//"ja":mmdbtype.String("アジア"),
+		//"pt-BR":mmdbtype.String("Ásia"),
+		//"ru":mmdbtype.String("Азия"),
+		//"zh-CN":mmdbtype.String("亚洲")},
+		//},
+		//"country": mmdbtype.Map{
+		//"geoname_id":mmdbtype.Uint32(1814991),
+		//"is_in_european_union":mmdbtype.Bool(false),
+		//"iso_code":mmdbtype.String("CN"),
+		//"names":mmdbtype.Map{
+		//"de":mmdbtype.String("China"),
+		//"en":mmdbtype.String("China"),
+		//"es":mmdbtype.String("China"),
+		//"fr":mmdbtype.String("Chine"),
+		//"ja":mmdbtype.String("中国"),
+		//"pt-BR":mmdbtype.String("China"),
+		//"ru":mmdbtype.String("Китай"),
+		//"zh-CN":mmdbtype.String("中国"),
+		//},
+		//},
+		//"registered_country": mmdbtype.Map{
+		//"geoname_id":mmdbtype.Uint32(1814991),
+		//"is_in_european_union":mmdbtype.Bool(false),
+		//"iso_code":mmdbtype.String("CN"),
+		//"names":mmdbtype.Map{
+		//"de":mmdbtype.String("China"),
+		//"en":mmdbtype.String("China"),
+		//"es":mmdbtype.String("China"),
+		//"fr":mmdbtype.String("Chine"),
+		//"ja":mmdbtype.String("中国"),
+		//"pt-BR":mmdbtype.String("China"),
+		//"ru":mmdbtype.String("Китай"),
+		//"zh-CN":mmdbtype.String("中国"),
+		//},
+		//},
+		//"traits": mmdbtype.Map{
+		//"is_anonymous_proxy": mmdbtype.Bool(false),
+		//"is_satellite_provider":mmdbtype.Bool(false),
+		//},
+		//},
 
 var (
 	srcFile string
 	dstFile string
 	databaseType string
-	// 只保留了 iso_code
 	cnRecord = mmdbtype.Map{
 		"country": mmdbtype.Map{
+			"geoname_id":           mmdbtype.Uint32(1814991),
+			"is_in_european_union": mmdbtype.Bool(false),
 			"iso_code":             mmdbtype.String("CN"),
+			"names": mmdbtype.Map{
+				"de":    mmdbtype.String("China"),
+				"en":    mmdbtype.String("China"),
+				"es":    mmdbtype.String("China"),
+				"fr":    mmdbtype.String("Chine"),
+				"ja":    mmdbtype.String("中国"),
+				"pt-BR": mmdbtype.String("China"),
+				"ru":    mmdbtype.String("Китай"),
+				"zh-CN": mmdbtype.String("中国"),
+			},
 		},
 	}
 )
@@ -29,51 +87,11 @@ func init()  {
 	flag.Parse()
 }
 
-// <-- 新增：实现 parseCIDRs 函数，将字符串列表解析为 net.IPNet 列表
-func parseCIDRs(ipTxtList []string) []*net.IPNet {
-	var ipList []*net.IPNet
-	for _, ipTxt := range ipTxtList {
-		// 使用 net.ParseCIDR 解析 IPv4 或 IPv6 地址/CIDR
-		_, ipNet, err := net.ParseCIDR(ipTxt)
-		if err != nil {
-			// 如果解析失败（可能是单独的IP地址而不是CIDR），尝试解析为单个IP
-			ip := net.ParseIP(ipTxt)
-			if ip != nil {
-				// 对于单个 IP，创建一个 /32 (IPv4) 或 /128 (IPv6) 的网络
-				maskLen := net.IPv4len * 8 // 32
-				if ip.To4() == nil { // 是 IPv6 地址
-					maskLen = net.IPv6len * 8 // 128
-				}
-				
-				// net.CIDRMask 创建子网掩码
-				ipNet = &net.IPNet{
-					IP: ip,
-					Mask: net.CIDRMask(maskLen, maskLen),
-				}
-			} else {
-				// 真正的错误，跳过该行
-				log.Warnf("Skipping invalid IP/CIDR entry: %s, error: %v", ipTxt, err)
-				continue
-			}
-		}
-		ipList = append(ipList, ipNet)
-	}
-	return ipList
-}
-// --> end parseCIDRs
-
 func main()  {
 	writer, err := mmdbwriter.New(
 		mmdbwriter.Options{
 			DatabaseType: databaseType,
 			RecordSize:   24,
-			// 在 Metadata 中增加 Description
-			Metadata: mmdbtype.Map{
-				"description": mmdbtype.Map{
-					"en": mmdbtype.String("Custom MMDB for China ISO Code"),
-					"zh-CN": mmdbtype.String("自定义中国ISO代码MMDB"),
-				},
-			},
 		},
 	)
 	if err != nil {
@@ -92,7 +110,7 @@ func main()  {
 		ipTxtList = append(ipTxtList, scanner.Text())
 	}
 
-	ipList := parseCIDRs(ipTxtList) 
+	ipList := parseCIDRs(ipTxtList)
 	for _, ip := range ipList {
 		err = writer.Insert(ip, cnRecord)
 		if err != nil {
@@ -111,3 +129,4 @@ func main()  {
 	}
 
 }
+
