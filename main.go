@@ -10,28 +10,33 @@ import (
 )
 
 var (
-	srcFile string
-	dstFile string
+	srcFile      string
+	dstFile      string
 	databaseType string
-	cnRecord = mmdbtype.Map{
+	cnRecord     = mmdbtype.Map{
 		"country": mmdbtype.Map{
-			"iso_code":             mmdbtype.String("CN"),
+			"iso_code": mmdbtype.String("CN"),
 		},
 	}
 )
 
-func init()  {
+func init() {
 	flag.StringVar(&srcFile, "s", "ipip_cn.txt", "specify source ip list file")
 	flag.StringVar(&dstFile, "d", "Country.mmdb", "specify destination mmdb file")
-	flag.StringVar(&databaseType,"t", "GeoIP2-Country", "specify MaxMind database type")
+	flag.StringVar(&databaseType, "t", "GeoIP2-Country", "specify MaxMind database type")
 	flag.Parse()
 }
 
-func main()  {
+func main() {
 	writer, err := mmdbwriter.New(
 		mmdbwriter.Options{
 			DatabaseType: databaseType,
 			RecordSize:   24,
+			// --- 这里是新增的部分 ---
+			Description: map[string]string{
+				"en": "CN IP Database", // 这里写你想要的英文描述
+			},
+			// -----------------------
 		},
 	)
 	if err != nil {
@@ -43,6 +48,8 @@ func main()  {
 	if err != nil {
 		log.Fatalf("fail to open %s\n", err)
 	}
+	defer fh.Close() // 建议加上关闭文件
+
 	scanner := bufio.NewScanner(fh)
 	scanner.Split(bufio.ScanLines)
 
@@ -62,6 +69,7 @@ func main()  {
 	if err != nil {
 		log.Fatalf("fail to create output file %v\n", err)
 	}
+	defer outFh.Close() // 建议加上关闭文件
 
 	_, err = writer.WriteTo(outFh)
 	if err != nil {
@@ -69,4 +77,3 @@ func main()  {
 	}
 
 }
-
