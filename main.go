@@ -6,6 +6,7 @@ import (
 	"github.com/maxmind/mmdbwriter"
 	"github.com/maxmind/mmdbwriter/mmdbtype"
 	log "github.com/sirupsen/logrus"
+	"net" // <-- 新增：处理 IP 地址和 CIDR 所需
 	"os"
 )
 
@@ -27,6 +28,39 @@ func init()  {
 	flag.StringVar(&databaseType,"t", "GeoIP2-Country", "specify MaxMind database type")
 	flag.Parse()
 }
+
+// <-- 新增：实现 parseCIDRs 函数，将字符串列表解析为 net.IPNet 列表
+func parseCIDRs(ipTxtList []string) []*net.IPNet {
+	var ipList []*net.IPNet
+	for _, ipTxt := range ipTxtList {
+		// 使用 net.ParseCIDR 解析 IPv4 或 IPv6 地址/CIDR
+		_, ipNet, err := net.ParseCIDR(ipTxt)
+		if err != nil {
+			// 如果解析失败（可能是单独的IP地址而不是CIDR），尝试解析为单个IP
+			ip := net.ParseIP(ipTxt)
+			if ip != nil {
+				// 对于单个 IP，创建一个 /32 (IPv4) 或 /128 (IPv6) 的网络
+				maskLen := net.IPv4len * 8 // 32
+				if ip.To4() == nil { // 是 IPv6 地址
+					maskLen = net.IPv6len * 8 // 128
+				}
+				
+				// net.CIDRMask 创建子网掩码
+				ipNet = &net.IPNet{
+					IP: ip,
+					Mask: net.CIDRMask(maskLen, maskLen),
+				}
+			} else {
+				// 真正的错误，跳过该行
+				log.Warnf("Skipping invalid IP/CIDR entry: %s, error: %v", ipTxt, err)
+				continue
+			}
+		}
+		ipList = append(ipList, ipNet)
+	}
+	return ipList
+}
+// --> end parseCIDRs
 
 func main()  {
 	writer, err := mmdbwriter.New(
@@ -58,8 +92,6 @@ func main()  {
 		ipTxtList = append(ipTxtList, scanner.Text())
 	}
 
-	// 注意：`parseCIDRs` 函数未在提供的代码片段中定义。
-	// 假设它是一个存在的函数，用于将文本行转换为可插入的 IP/CIDR 列表。
 	ipList := parseCIDRs(ipTxtList) 
 	for _, ip := range ipList {
 		err = writer.Insert(ip, cnRecord)
