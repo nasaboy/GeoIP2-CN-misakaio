@@ -10,35 +10,35 @@ import (
 )
 
 var (
-	srcFile      string
-	dstFile      string
+	srcFile string
+	dstFile string
 	databaseType string
-	description  string
-	// 仅保留 country -> iso_code: "CN"
+	// 只保留了 iso_code
 	cnRecord = mmdbtype.Map{
 		"country": mmdbtype.Map{
-			"iso_code": mmdbtype.String("CN"),
+			"iso_code":             mmdbtype.String("CN"),
 		},
 	}
 )
 
-func init() {
+func init()  {
 	flag.StringVar(&srcFile, "s", "ipip_cn.txt", "specify source ip list file")
 	flag.StringVar(&dstFile, "d", "Country.mmdb", "specify destination mmdb file")
-	flag.StringVar(&databaseType, "t", "GeoLite2-Country", "specify MaxMind database type")
-	flag.StringVar(&description, "description", "Customized GeoLite2 Country database", "specify a description for mmdb metadata")
+	flag.StringVar(&databaseType,"t", "GeoIP2-Country", "specify MaxMind database type")
 	flag.Parse()
 }
 
-// parseCIDRs 定义见 ip2cidr.go
-
-func main() {
+func main()  {
 	writer, err := mmdbwriter.New(
 		mmdbwriter.Options{
 			DatabaseType: databaseType,
 			RecordSize:   24,
-			Description: map[string]string{
-				"en": description,
+			// 在 Metadata 中增加 Description
+			Metadata: mmdbtype.Map{
+				"description": mmdbtype.Map{
+					"en": mmdbtype.String("Custom MMDB for China ISO Code"),
+					"zh-CN": mmdbtype.String("自定义中国ISO代码MMDB"),
+				},
 			},
 		},
 	)
@@ -58,7 +58,9 @@ func main() {
 		ipTxtList = append(ipTxtList, scanner.Text())
 	}
 
-	ipList := parseCIDRs(ipTxtList)
+	// 注意：`parseCIDRs` 函数未在提供的代码片段中定义。
+	// 假设它是一个存在的函数，用于将文本行转换为可插入的 IP/CIDR 列表。
+	ipList := parseCIDRs(ipTxtList) 
 	for _, ip := range ipList {
 		err = writer.Insert(ip, cnRecord)
 		if err != nil {
@@ -75,4 +77,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("fail to write to file %v\n", err)
 	}
+
 }
